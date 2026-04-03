@@ -1,0 +1,56 @@
+name: Terraform + Build + Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  IMAGE_NAME: hello-app
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    # -----------------------------
+    # Terraform Init & Apply
+    # -----------------------------
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v3
+
+    - name: Terraform Init
+      run: terraform init
+      working-directory: terraform
+
+    - name: Terraform Apply
+      run: |
+        terraform apply -auto-approve \
+          -var="resource_group_name=${{ secrets.RESOURCE_GROUP }}" \
+          -var="acr_name=${{ secrets.ACR_NAME }}" \
+          -var="aci_name=hello-aci" \
+          -var="dns_label=hello-${{ github.run_number }}" \
+          -var="image_name=${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest"
+      working-directory: terraform
+
+    # -----------------------------
+    # Build & Push Image
+    # -----------------------------
+    - name: ACR Login
+      run: az acr login --name ${{ secrets.ACR_NAME }}
+
+    - name: Build Image
+      run: |
+        docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest .
+
+    - name: Push Image
+      run: |
+        docker push ${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest
