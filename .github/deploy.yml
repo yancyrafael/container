@@ -41,9 +41,9 @@ jobs:
           -var="image_name=${{ secrets.ACR_NAME }}.azurecr.io/${{ env.IMAGE_NAME }}:latest"
       working-directory: terraform
 
-    # -----------------------------
+    # ----------------------------
     # Build & Push Image
-    # -----------------------------
+    # ----------------------------
     - name: ACR Login
       run: az acr login --name ${{ secrets.ACR_NAME }}
 
